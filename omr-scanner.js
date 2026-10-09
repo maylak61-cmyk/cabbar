@@ -591,19 +591,10 @@ window.OMRScanner = {
       ? window.TestResultsModule.testMeta
       : { title: 'Etüt Tarama Testi', subject: 'Matematik', totalQuestions: 20, date: new Date().toISOString().split('T')[0] };
 
-    const rawClasses = (window.Store && typeof window.Store.getClasses === 'function') ? window.Store.getClasses() : [];
-    let availableBranches = [];
-    if (Array.isArray(rawClasses) && rawClasses.length > 0) {
-      availableBranches = rawClasses.map(c => {
-        if (!c) return '';
-        if (typeof c === 'object') return (c.name || c.id || '').toString();
-        return c.toString();
-      }).filter(Boolean);
-    }
-    if (availableBranches.length === 0) {
-      availableBranches = [...new Set(students.map(s => s && s.className).filter(Boolean))];
-    }
-    availableBranches = [...new Set(availableBranches)].sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
+    const existingClasses = (window.Store && typeof window.Store.getClasses === 'function') ? window.Store.getClasses() : [];
+    const availableBranches = existingClasses.length > 0 
+      ? existingClasses.map(c => c.name || c.id) 
+      : [...new Set(students.map(s => s.className).filter(Boolean))].sort();
 
     let modal = document.getElementById('omr-print-modal');
     if (!modal) {
@@ -664,10 +655,8 @@ window.OMRScanner = {
               <select id="omr-print-class-select" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800">
                 <option value="ALL">Tüm Aktif Talebeler (${students.length})</option>
                 ${availableBranches.map(br => {
-                  if (!br) return '';
-                  const cleanBr = br.toString().trim();
-                  const cnt = students.filter(s => (s.className || '').trim().toUpperCase() === cleanBr.toUpperCase()).length;
-                  return `<option value="${cleanBr}">${cleanBr} Sınıfı (${cnt} Talebe)</option>`;
+                  const cnt = students.filter(s => (s.className || '').trim().toUpperCase() === br.trim().toUpperCase()).length;
+                  return `<option value="${br}">${br} Sınıfı (${cnt} Talebe)</option>`;
                 }).join('')}
                 <option value="BLANK">İsimsiz Boş Form (Genel Kullanım İçin 5 Adet)</option>
               </select>
@@ -1027,7 +1016,7 @@ window.OMRScanner = {
             <span style="font-size: 10px; font-weight: 900; width: 18px; text-align: right; color: #111;">${q}.</span>
             <div style="display: flex; align-items: center; gap: 6px;">
               ${options.map(opt => `
-                <span style="display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; border: 1.5px solid #000; border-radius: 50%; font-size: 10px; font-weight: 900; color: #000;">
+                <span style="display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border: 1.5px solid #000; border-radius: 50%; font-size: 8.5px; font-weight: 900; color: #000;">
                   ${opt}
                 </span>
               `).join('')}

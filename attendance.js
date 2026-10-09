@@ -450,41 +450,6 @@ window.AttendanceModule = {
       );
     }
 
-    // Sınıf ve Şubelerine göre sıralama (5-A ➔ 8-B), şube içinde okul no ve isim sırası
-    if (window.Store && typeof window.Store.sortStudentsByClassAndNo === 'function') {
-      students = window.Store.sortStudentsByClassAndNo(students);
-    } else {
-      const getComparableClass = (cls) => {
-        if (!cls) return 'ZZZ';
-        const clean = cls.toString().trim().toUpperCase().replace('/', '-').replace(/\s+/g, '');
-        const m = clean.match(/^(\d+)([A-ZÇĞİÖŞÜ])$/);
-        if (m) return `${m[1]}-${m[2]}`;
-        return clean;
-      };
-
-      students.sort((a, b) => {
-        if (!a && !b) return 0;
-        if (!a) return 1;
-        if (!b) return -1;
-        const clsA = getComparableClass(a.className);
-        const clsB = getComparableClass(b.className);
-        if (clsA !== clsB) {
-          const cmp = clsA.localeCompare(clsB, 'tr', { numeric: true });
-          if (cmp !== 0) return cmp;
-        }
-        const noA = parseInt(a.studentNo, 10);
-        const noB = parseInt(b.studentNo, 10);
-        const hasNoA = !isNaN(noA) && noA > 0;
-        const hasNoB = !isNaN(noB) && noB > 0;
-        if (hasNoA && hasNoB && noA !== noB) return noA - noB;
-        if (hasNoA && !hasNoB) return -1;
-        if (!hasNoA && hasNoB) return 1;
-        const nameA = `${(a.firstName || '').trim()} ${(a.lastName || '').trim()}`.trim();
-        const nameB = `${(b.firstName || '').trim()} ${(b.lastName || '').trim()}`.trim();
-        return nameA.localeCompare(nameB, 'tr', { sensitivity: 'base' });
-      });
-    }
-
     return students;
   },
 

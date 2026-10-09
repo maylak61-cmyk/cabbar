@@ -10,7 +10,19 @@
 
 window.LeaderboardModule = {
   period: 'haftalik', // 'haftalik' | 'aylik'
-  targetDate: new Date().toISOString().split('T')[0],
+  getTodayStr() {
+    return (window.Store && typeof window.Store.getTodayDate === 'function')
+      ? window.Store.getTodayDate()
+      : new Date().toLocaleDateString('en-CA');
+  },
+
+  get targetDate() {
+    return this._targetDate || this.getTodayStr();
+  },
+  set targetDate(val) {
+    this._targetDate = val;
+  },
+
   classFilter: 'ALL', // 'ALL' | '5. Sınıf' | '6. Sınıf' | '7. Sınıf' | '8. Sınıf'
   searchQuery: '',
   detailStudentId: null,
@@ -35,7 +47,7 @@ window.LeaderboardModule = {
   },
 
   setToday() {
-    this.targetDate = new Date().toISOString().split('T')[0];
+    this.targetDate = this.getTodayStr();
     this.renderView();
   },
 

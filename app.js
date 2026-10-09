@@ -670,12 +670,6 @@ window.App = {
       }
       this.discardStudentDrafts(false);
     }
-    if ((this.activeTab === 'kuran_takip' || this.activeTab === 'hatim') && tab !== 'kuran_takip' && tab !== 'hatim' && window.QuranTrackerModule && typeof window.QuranTrackerModule.hasPendingChanges === 'function' && window.QuranTrackerModule.hasPendingChanges()) {
-      if (!confirm('Kaydedilmemiş Kur\'an takip değişiklikleriniz var!\n\nKaydetmeden başka bir ekrana geçerseniz girdiğiniz sayfalar kaybolacaktır. Çıkmak istediğinizden emin misiniz?')) {
-        return;
-      }
-      window.QuranTrackerModule.pendingChanges = {};
-    }
     this.closeDrawer();
     this.activeTab = tab;
     if (tab === 'yoklama' && category && window.AttendanceModule) {

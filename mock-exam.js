@@ -1,5 +1,5 @@
 /**
- * mock-exam.js - Osmangazi Kurumsal Deneme Sınavları, Hedef Kitle (Şube/Talebe) Seçimi & QR Kodlu Çok Dersli LGS Optik Okuma Sistemi (v9.2)
+ * mock-exam.js - Osmangazi Kurumsal Deneme Sınavları, Hedef Kitle (Şube/Talebe) Seçimi & QR Kodlu Çok Dersli LGS Optik Okuma Sistemi (v7.7)
  * - 1. Hedef Kitle Belirleme: Hangi sınıflara/talebeler yapılacağı (8-A, 8-B, Seviye 8 LGS, 7-A, 7-B vb.) net ve esnek seçim
  * - 2. Soru Sayısı, Dersler, Ders Katsayıları (Puan Ağırlıkları) ve Soru Başına MEB Kazanım Girişi
  * - 3. 🖨️ Çok Dersli LGS Optik Form Yazdırma: Her talebeye özel QR Kodlu A4 optik cevap formu (Tüm dersler tek formda)
@@ -57,11 +57,11 @@ window.MockExamModule = {
       targetClasses: ['7-A', '7-B'],
       subjects: [
         { id: 'sub_turkce', name: 'Türkçe', questionCount: 15, coefficient: 4.00, wrongPenalty: 3, kazanimlar: {}, answerKeyA: {}, answerKeyB: {} },
+        { id: 'sub_matematik', name: 'Matematik', questionCount: 15, coefficient: 4.00, wrongPenalty: 3, kazanimlar: {}, answerKeyA: {}, answerKeyB: {} },
+        { id: 'sub_fen', name: 'Fen Bilimleri', questionCount: 15, coefficient: 4.00, wrongPenalty: 3, kazanimlar: {}, answerKeyA: {}, answerKeyB: {} },
         { id: 'sub_sosyal', name: 'Sosyal Bilgiler', questionCount: 10, coefficient: 2.00, wrongPenalty: 3, kazanimlar: {}, answerKeyA: {}, answerKeyB: {} },
         { id: 'sub_din', name: 'Din Kültürü', questionCount: 10, coefficient: 2.00, wrongPenalty: 3, kazanimlar: {}, answerKeyA: {}, answerKeyB: {} },
-        { id: 'sub_ingilizce', name: 'İngilizce', questionCount: 10, coefficient: 2.00, wrongPenalty: 3, kazanimlar: {}, answerKeyA: {}, answerKeyB: {} },
-        { id: 'sub_matematik', name: 'Matematik', questionCount: 15, coefficient: 4.00, wrongPenalty: 3, kazanimlar: {}, answerKeyA: {}, answerKeyB: {} },
-        { id: 'sub_fen', name: 'Fen Bilimleri', questionCount: 15, coefficient: 4.00, wrongPenalty: 3, kazanimlar: {}, answerKeyA: {}, answerKeyB: {} }
+        { id: 'sub_ingilizce', name: 'İngilizce', questionCount: 10, coefficient: 2.00, wrongPenalty: 3, kazanimlar: {}, answerKeyA: {}, answerKeyB: {} }
       ]
     }
   },
@@ -415,7 +415,7 @@ window.MockExamModule = {
 
         <!-- Dersler ve Katsayılar Özeti -->
         <div class="grid grid-cols-2 gap-1.5 text-[11px]">
-          ${this.getOrderedLgsSubjects(subjects).slice(0, 6).map(s => `
+          ${subjects.slice(0, 6).map(s => `
             <div class="p-1.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
               <span class="font-bold text-slate-700 truncate">${s.name}:</span>
               <span class="text-[10px] text-slate-500 font-mono">${s.questionCount}S (x${s.coefficient})</span>
@@ -1068,9 +1068,6 @@ window.MockExamModule = {
       return;
     }
 
-    // Ders sıralamasını daima LGS standardına sabitle: Türkçe, İnkılap Tarihi, Din Kültürü, İngilizce, Matematik, Fen Bilimleri
-    d.subjects = this.getOrderedLgsSubjects(d.subjects);
-
     const saved = window.Store.saveMockExam(d);
     this.selectedExamId = saved.id;
 
@@ -1112,19 +1109,10 @@ window.MockExamModule = {
       ? window.Store.getStudents(false)
       : [];
     const participatingStudents = this.getParticipatingStudents(exam);
-    const rawClasses = (window.Store && typeof window.Store.getClasses === 'function') ? window.Store.getClasses() : [];
-    let availableBranches = [];
-    if (Array.isArray(rawClasses) && rawClasses.length > 0) {
-      availableBranches = rawClasses.map(c => {
-        if (!c) return '';
-        if (typeof c === 'object') return (c.name || c.id || '').toString();
-        return c.toString();
-      }).filter(Boolean);
-    }
-    if (availableBranches.length === 0) {
-      availableBranches = [...new Set(allStudents.map(s => s && s.className).filter(Boolean))];
-    }
-    availableBranches = [...new Set(availableBranches)].sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
+    const existingClasses = (window.Store && typeof window.Store.getClasses === 'function') ? window.Store.getClasses() : [];
+    const availableBranches = existingClasses.length > 0 
+      ? existingClasses.map(c => c.name || c.id) 
+      : [...new Set(allStudents.map(s => s.className).filter(Boolean))].sort();
 
     let modal = document.getElementById('mock-print-modal');
     if (!modal) {
@@ -1185,10 +1173,8 @@ window.MockExamModule = {
               <select id="mock-print-class-select" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800">
                 <option value="ALL">Tüm Sınav Katılımcıları (${participatingStudents.length} Talebe)</option>
                 ${availableBranches.map(br => {
-                  if (!br) return '';
-                  const cleanBr = br.toString().trim();
-                  const cnt = participatingStudents.filter(s => (s.className || '').trim().toUpperCase() === cleanBr.toUpperCase()).length;
-                  return `<option value="${cleanBr}">${cleanBr} Sınıfı (${cnt} Talebe)</option>`;
+                  const cnt = participatingStudents.filter(s => (s.className || '').trim().toUpperCase() === br.trim().toUpperCase()).length;
+                  return `<option value="${br}">${br} Sınıfı (${cnt} Talebe)</option>`;
                 }).join('')}
                 <option value="BLANK">İsimsiz Boş Form (Yedek - 4 Adet)</option>
               </select>
@@ -1235,67 +1221,6 @@ window.MockExamModule = {
         </div>
       </div>
     `;
-  },
-
-  normalizeText(str) {
-    if (!str) return '';
-    return str
-      .toString()
-      .replace(/İ/g, 'i')
-      .replace(/I/g, 'i')
-      .replace(/ı/g, 'i')
-      .replace(/i̇/g, 'i')
-      .replace(/ç/g, 'c')
-      .replace(/Ç/g, 'c')
-      .replace(/ğ/g, 'g')
-      .replace(/Ğ/g, 'g')
-      .replace(/ö/g, 'o')
-      .replace(/Ö/g, 'o')
-      .replace(/ş/g, 's')
-      .replace(/Ş/g, 's')
-      .replace(/ü/g, 'u')
-      .replace(/Ü/g, 'u')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim();
-  },
-
-  getShortSubjectName(name) {
-    if (!name) return '';
-    const n = this.normalizeText(name);
-    if (n.includes('turkce') || n === 'tr') return 'Türkçe';
-    if (n.includes('inkilap') || n.includes('tarih') || n.includes('sosyal')) return 'İnkılap Tarihi';
-    if (n.includes('din') || n.includes('dkab')) return 'Din Kültürü';
-    if (n.includes('ing') || n.includes('yabanci') || n.includes('dil') || n.includes('eng')) return 'İngilizce';
-    if (n.includes('mat')) return 'Matematik';
-    if (n.includes('fen') || n.includes('fzk')) return 'Fen Bilimleri';
-    const raw = name.trim();
-    return raw.length > 15 ? raw.substring(0, 15) : raw;
-  },
-
-  getOrderedLgsSubjects(subjects) {
-    if (!Array.isArray(subjects) || subjects.length === 0) {
-      return [
-        { name: 'Türkçe', questionCount: 20 },
-        { name: 'İnkılap Tarihi', questionCount: 10 },
-        { name: 'Din Kültürü', questionCount: 10 },
-        { name: 'İngilizce', questionCount: 10 },
-        { name: 'Matematik', questionCount: 20 },
-        { name: 'Fen Bilimleri', questionCount: 20 }
-      ];
-    }
-    const getRank = (name) => {
-      const n = this.normalizeText(name);
-      if (n.includes('turkce') || n === 'tr') return 1;
-      if (n.includes('inkilap') || n.includes('tarih') || n.includes('sosyal')) return 2;
-      if (n.includes('din') || n.includes('dkab')) return 3;
-      if (n.includes('ing') || n.includes('yabanci') || n.includes('dil') || n.includes('eng')) return 4;
-      if (n.includes('mat')) return 5;
-      if (n.includes('fen') || n.includes('fzk')) return 6;
-      return 100;
-    };
-    return [...subjects].sort((a, b) => getRank(a.name) - getRank(b.name));
   },
 
   executePrintForms(examId, customOptions = null) {
@@ -1355,12 +1280,12 @@ window.MockExamModule = {
     const instName = settings.institutionName || 'TABAKÇILAR B BLOK';
     const orderedSubjects = this.getOrderedLgsSubjects(subjects);
 
-    // Sözel ve Sayısal soru sayıları hesabı (Tüm dersler kesintisiz yan yana)
-    let sozelQCount = 50;
-    let sayisalQCount = 40;
+    // Sözel ve Sayısal küme ayrımı (Standart 5+ dersli sınavlarda ilk 4 ders Sözel, kalanlar Sayısal)
+    let sozelSubjects = orderedSubjects;
+    let sayisalSubjects = [];
     if (orderedSubjects.length >= 5) {
-      sozelQCount = orderedSubjects.slice(0, 4).reduce((sum, s) => sum + (parseInt(s.questionCount, 10) || 0), 0);
-      sayisalQCount = orderedSubjects.slice(4).reduce((sum, s) => sum + (parseInt(s.questionCount, 10) || 0), 0);
+      sozelSubjects = orderedSubjects.slice(0, 4);
+      sayisalSubjects = orderedSubjects.slice(4);
     }
 
     let printHtml = `
@@ -1389,23 +1314,14 @@ window.MockExamModule = {
             -webkit-font-smoothing: antialiased;
           }
           @media print {
-            @page {
-              size: A4 landscape;
-              margin: 0;
-            }
             .no-print-top-bar {
               display: none !important;
-            }
-            .sheet {
-              box-shadow: none !important;
-              margin: 0 !important;
             }
           }
           @media screen {
             body {
               background: #475569;
               padding-top: 52px;
-              overflow-x: auto;
             }
             .sheet {
               box-shadow: 0 4px 25px rgba(0, 0, 0, 0.4);
@@ -1460,7 +1376,6 @@ window.MockExamModule = {
           }
           .sheet {
             width: 297mm;
-            min-width: 297mm;
             height: 210mm;
             max-height: 210mm;
             page-break-after: always;
@@ -1477,50 +1392,47 @@ window.MockExamModule = {
           /* 4 KÖŞE KALIN L HİZALAMA ÇERÇEVELERİ (GÖRSELE BİREBİR KÖŞEBENTLER) */
           .corner-bracket {
             position: absolute;
-            width: 65px;
-            height: 65px;
-            box-sizing: border-box;
-            pointer-events: none;
+            width: 56px;
+            height: 56px;
           }
           .corner-bracket.tl {
-            top: 6mm;
-            left: 8mm;
-            border-top: 12px solid #000;
-            border-left: 12px solid #000;
+            top: 5mm;
+            left: 7mm;
+            border-top: 10px solid #000;
+            border-left: 10px solid #000;
           }
           .corner-bracket.tr {
-            top: 6mm;
-            right: 8mm;
-            border-top: 12px solid #000;
-            border-right: 12px solid #000;
+            top: 5mm;
+            right: 7mm;
+            border-top: 10px solid #000;
+            border-right: 10px solid #000;
           }
           .corner-bracket.bl {
-            bottom: 6mm;
-            left: 8mm;
-            border-bottom: 12px solid #000;
-            border-left: 12px solid #000;
+            bottom: 5mm;
+            left: 7mm;
+            border-bottom: 10px solid #000;
+            border-left: 10px solid #000;
           }
           .corner-bracket.br {
-            bottom: 6mm;
-            right: 8mm;
-            border-bottom: 12px solid #000;
-            border-right: 12px solid #000;
+            bottom: 5mm;
+            right: 7mm;
+            border-bottom: 10px solid #000;
+            border-right: 10px solid #000;
           }
 
           /* İÇ FORM ALANI (KÖŞEBENTLERİN İÇİNDE) */
           .form-inner {
-            margin: 1.5mm 5mm 0 5mm;
+            margin: 0 3mm;
             display: flex;
             flex-direction: column;
             height: 100%;
-            justify-content: flex-start;
-            box-sizing: border-box;
+            justify-content: space-between;
           }
 
           /* ÜST BAŞLIK VE ÖĞRENCİ BİLGİ KARTI */
           .exam-header-card {
-            background: #f8fafc;
-            border: 1px solid #718096;
+            background: #ffffff;
+            border: 1.2px solid #cbd5e1;
             border-radius: 6px;
             overflow: hidden;
             margin-bottom: 8px;
@@ -1530,26 +1442,26 @@ window.MockExamModule = {
             background: #4c4c4c;
             color: #ffffff;
             font-weight: 700;
-            font-size: 13px;
+            font-size: 13.5px;
             text-align: center;
-            padding: 4px 12px;
-            letter-spacing: 0.2px;
+            padding: 4.5px 12px;
+            letter-spacing: 0.3px;
             line-height: 1.25;
           }
           .exam-info-body {
-            padding: 5px 14px 4px 14px;
-            background: #f8fafc;
+            padding: 6px 14px 4px 14px;
+            background: #ffffff;
           }
           .info-line {
             display: flex;
-            align-items: baseline;
-            margin-bottom: 3px;
-            height: 16px;
+            align-items: flex-end;
+            margin-bottom: 3.5px;
+            height: 18px;
           }
           .info-lbl {
             font-weight: 600;
             color: #1e293b;
-            font-size: 11px;
+            font-size: 11.5px;
             white-space: nowrap;
             margin-right: 6px;
           }
@@ -1557,63 +1469,57 @@ window.MockExamModule = {
             font-weight: 800;
             color: #000000;
             text-transform: uppercase;
-            font-size: 11px;
+            font-size: 11.5px;
             white-space: nowrap;
             margin-right: 6px;
           }
           .info-dots {
             flex: 1;
             border-bottom: 1px dotted #94a3b8;
-            margin-bottom: 3px;
-            min-width: 20px;
+            margin-bottom: 3.5px;
           }
           .tracking-code-line {
             text-align: right;
-            font-size: 9px;
-            font-weight: 600;
-            font-family: monospace, sans-serif;
+            font-size: 9.5px;
+            font-weight: 700;
             color: #334155;
             margin-top: 1px;
             padding-right: 2px;
           }
 
-          /* ANA FORM IZGARA ALANI: KAREKOD + 6 DERS SÜTUNU KESİNTİSİZ YAN YANA */
+          /* ANA FORM IZGARA ALANI */
           .exam-grid-layout {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: flex-start !important;
-            width: 100% !important;
-            flex: 1 !important;
+            display: flex;
+            align-items: stretch;
+            gap: 14px;
+            flex: 1;
           }
 
           /* SOL SÜTUN (KAREKOD + KİTAPÇIK TÜRÜ) */
           .left-side-panel {
-            width: 98px !important;
-            flex-shrink: 0 !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: flex-start !important;
-            gap: 10px !important;
-            margin-right: 14px !important;
+            width: 124px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 10px;
           }
           .side-card {
-            width: 100%;
+            border: 1px solid #718096;
+            border-radius: 5px;
+            overflow: hidden;
+            background: #ffffff;
           }
-          .side-card-pill {
+          .side-card-title {
             background: #4c4c4c;
             color: #ffffff;
             font-weight: 700;
-            font-size: 10px;
+            font-size: 11px;
             text-align: center;
-            padding: 3px 0;
-            border-radius: 4px 4px 0 0;
+            padding: 3.5px 0;
             letter-spacing: 0.2px;
           }
           .side-card-body {
-            border: 1px solid #718096;
-            border-top: none;
-            border-radius: 0 0 4px 4px;
             padding: 4px;
             display: flex;
             flex-direction: column;
@@ -1631,8 +1537,8 @@ window.MockExamModule = {
           .booklet-labels-row {
             display: flex;
             justify-content: space-around;
-            padding: 2px 0;
-            font-size: 11px;
+            padding: 2.5px 0;
+            font-size: 11.5px;
             font-weight: 700;
             color: #334155;
             border-bottom: 1px solid #cbd5e1;
@@ -1640,135 +1546,109 @@ window.MockExamModule = {
           .booklet-bubbles-row {
             display: flex;
             justify-content: space-around;
-            padding: 3px 0;
+            padding: 3.5px 0;
           }
 
-          /* 6 DERS SÜTUNU ALANI */
+          /* DERSLER BÖLÜMÜ (SÖZEL VE SAYISAL KÜMELER) */
           .subjects-wrapper {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: flex-start !important;
-            flex: 1 !important;
-            min-width: 0 !important;
-            gap: 6px !important;
-          }
-
-          /* TEKİL DERS SÜTUNU: SOL ZAMANLAMA/SAYI + SAĞ KART */
-          .subject-col-wrapper {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: flex-start !important;
-            flex: 1 1 0% !important;
-            min-width: 0 !important;
-          }
-          .subject-col-wrapper.sayisal-start {
-            margin-left: 14px !important;
-          }
-
-          /* SOL SAYI VE ZAMANLAMA ŞERİDİ */
-          .col-gutter {
             display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            width: 24px;
-            flex-shrink: 0;
-            margin-right: 3px;
+            align-items: stretch;
+            flex: 1;
+            justify-content: space-between;
           }
-          .gutter-spacer {
-            height: 40px; /* 22px col-pill + 18px col-options-header */
-          }
-          .gutter-row {
-            height: 7.0mm;
+          .sozel-cluster {
             display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 3px;
+            align-items: stretch;
+            gap: 8px;
+            flex: 4;
           }
-          .timing-box {
-            width: 8px;
-            height: 8px;
-            background: #000000;
-            border-radius: 1px;
-            display: inline-block;
-          }
-          .timing-empty {
-            width: 8px;
-            height: 8px;
-            display: inline-block;
-          }
-          .q-num {
-            width: 13px;
-            text-align: right;
-            font-weight: 700;
-            font-size: 10px;
-            font-family: Arial, sans-serif;
-            color: #334155;
+          .sayisal-cluster {
+            display: flex;
+            align-items: stretch;
+            gap: 8px;
+            flex: 2;
+            margin-left: 20px;
           }
 
-          /* SAĞ TEST KART ALANI */
-          .col-card {
+          .subject-column {
             flex: 1;
             min-width: 0;
             display: flex;
             flex-direction: column;
           }
-          .col-pill {
-            height: 22px;
-            line-height: 22px;
+          .sub-title-pill {
             background: #4c4c4c;
             color: #ffffff;
             font-weight: 700;
-            font-size: 10.5px;
+            font-size: 11px;
             text-align: center;
-            border-radius: 4px 4px 0 0;
+            padding: 3.5px 2px;
+            border-radius: 4px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            padding: 0 4px;
           }
-          .col-box {
-            border: 1.2px solid #718096;
-            border-top: none;
-            border-radius: 0 0 5px 5px;
-            background: #ffffff;
-            overflow: hidden;
-          }
-          .col-options-header {
-            height: 18px;
-            border-bottom: 1.2px solid #cbd5e1;
+          .sub-options-header {
             display: flex;
             align-items: center;
-            justify-content: space-around;
-            padding: 0 4px;
-            font-weight: 800;
-            font-size: 11px;
-            color: #475569;
+            justify-content: flex-end;
+            gap: 3.5px;
+            padding: 3px 0;
+            font-weight: 700;
+            font-size: 10.5px;
+            color: #334155;
           }
-          .col-row {
-            height: 7.0mm;
+          .opt-header-cell {
+            width: 15.5px;
+            text-align: center;
+          }
+
+          /* SORU SATIRLARI */
+          .question-row {
             display: flex;
             align-items: center;
-            justify-content: space-around;
-            padding: 0 4px;
+            height: 6.8mm;
+            margin-bottom: 0.5px;
+          }
+          .timing-anchor {
+            width: 7.5px;
+            height: 7.5px;
+            margin-right: 2.5px;
+            flex-shrink: 0;
+          }
+          .timing-anchor.black-box {
+            background: #000000;
+            border-radius: 1px;
+          }
+          .q-index {
+            width: 15px;
+            text-align: right;
+            font-weight: 700;
+            font-size: 10.5px;
+            font-family: Arial, sans-serif;
+            color: #334155;
+            margin-right: 3.5px;
+            flex-shrink: 0;
+          }
+          .bubbles-cell {
+            display: flex;
+            gap: 3.5px;
           }
           .bubble {
-            width: 17px;
-            height: 17px;
+            width: 15.5px;
+            height: 15.5px;
             border-radius: 50%;
-            border: 1.4px solid #64748b;
+            border: 1.2px solid #b0b0b0;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 10px;
-            font-weight: 800;
-            color: #64748b;
+            font-size: 8.5px;
+            font-weight: 700;
+            color: #888888;
             font-family: Arial, Helvetica, sans-serif;
             box-sizing: border-box;
-            background: #ffffff;
             user-select: none;
-            transition: all 0.1s;
+            background: #ffffff;
           }
           .bubble.filled {
             background: #000000 !important;
@@ -1782,47 +1662,36 @@ window.MockExamModule = {
 
     const formList = isBlank ? [{ isBlank: true, booklet: 'A' }, { isBlank: true, booklet: 'B' }] : students;
 
-    const renderSubjectColumn = (sub, isSayisalStart = false) => {
+    const renderSubjectColumn = (sub) => {
       const qCount = parseInt(sub.questionCount, 10) || 10;
       const displayName = this.getShortSubjectName(sub.name);
-
-      let gutterHtml = '';
-      let bubbleRowsHtml = '';
+      let rowsHtml = '';
       for (let q = 1; q <= qCount; q++) {
-        const isTiming = (q === 1 || q === 10 || (qCount >= 19 && q === 19));
-        gutterHtml += `
-          <div class="gutter-row">
-            <span class="${isTiming ? 'timing-box' : 'timing-empty'}"></span>
-            <span class="q-num">${q}</span>
-          </div>
-        `;
-        bubbleRowsHtml += `
-          <div class="col-row">
-            <span class="bubble">A</span>
-            <span class="bubble">B</span>
-            <span class="bubble">C</span>
-            <span class="bubble">D</span>
+        const isTiming = (q === 1 || q === 10 || q === 19);
+        rowsHtml += `
+          <div class="question-row">
+            <span class="timing-anchor ${isTiming ? 'black-box' : ''}"></span>
+            <span class="q-index">${q}</span>
+            <div class="bubbles-cell">
+              <span class="bubble">A</span>
+              <span class="bubble">B</span>
+              <span class="bubble">C</span>
+              <span class="bubble">D</span>
+            </div>
           </div>
         `;
       }
-
       return `
-        <div class="subject-col-wrapper ${isSayisalStart ? 'sayisal-start' : ''}">
-          <div class="col-gutter">
-            <div class="gutter-spacer"></div>
-            ${gutterHtml}
+        <div class="subject-column">
+          <div class="sub-title-pill" title="${sub.name}">${displayName}</div>
+          <div class="sub-options-header">
+            <span class="opt-header-cell">A</span>
+            <span class="opt-header-cell">B</span>
+            <span class="opt-header-cell">C</span>
+            <span class="opt-header-cell">D</span>
           </div>
-          <div class="col-card">
-            <div class="col-pill" title="${sub.name}">${displayName}</div>
-            <div class="col-box">
-              <div class="col-options-header">
-                <span>A</span>
-                <span>B</span>
-                <span>C</span>
-                <span>D</span>
-              </div>
-              ${bubbleRowsHtml}
-            </div>
+          <div>
+            ${rowsHtml}
           </div>
         </div>
       `;
@@ -1868,9 +1737,9 @@ window.MockExamModule = {
       const qrPayload = `OAY_MOCK:${exam.id}:${stId}:${stNo}:${stClass}:${qrBooklet}`;
       let qrSvg = '';
       if (window.MiniQRCode && typeof window.MiniQRCode.generateSvg === 'function') {
-        qrSvg = window.MiniQRCode.generateSvg(qrPayload, 92);
+        qrSvg = window.MiniQRCode.generateSvg(qrPayload, 104);
       } else {
-        qrSvg = `<div style="width:92px;height:92px;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-size:8px;font-family:monospace;text-align:center;">QR<br>${stNo}-${qrBooklet}</div>`;
+        qrSvg = `<div style="width:104px;height:104px;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-size:8px;font-family:monospace;text-align:center;">QR<br>${stNo}-${qrBooklet}</div>`;
       }
 
       printHtml += `
@@ -1912,14 +1781,14 @@ window.MockExamModule = {
               <!-- SOL SÜTUN -->
               <div class="left-side-panel">
                 <div class="side-card">
-                  <div class="side-card-pill">Karekodu Okutun</div>
+                  <div class="side-card-title">Karekodu Okutun</div>
                   <div class="side-card-body">
                     ${qrSvg}
                   </div>
                 </div>
 
                 <div class="side-card">
-                  <div class="side-card-pill">Kitapçık Türü</div>
+                  <div class="side-card-title">Kitapçık Türü</div>
                   <div class="side-card-body">
                     <div class="booklet-box">
                       <div class="booklet-labels-row">
@@ -1935,12 +1804,19 @@ window.MockExamModule = {
                 </div>
               </div>
 
-              <!-- DERSLER ALANI: 6 DERS KESİNTİSİZ YAN YANA -->
+              <!-- DERSLER GRUPLARI -->
               <div class="subjects-wrapper">
-                ${orderedSubjects.map((sub, sIdx) => {
-                  const isSayisalStart = (sIdx === 4 || (sIdx > 0 && this.normalizeText(sub.name).includes('mat') && !this.normalizeText(orderedSubjects[sIdx - 1].name).includes('mat')));
-                  return renderSubjectColumn(sub, isSayisalStart);
-                }).join('')}
+                <!-- SÖZEL DERSLER -->
+                <div class="sozel-cluster">
+                  ${sozelSubjects.map(sub => renderSubjectColumn(sub)).join('')}
+                </div>
+
+                <!-- SAYISAL DERSLER -->
+                ${sayisalSubjects.length > 0 ? `
+                  <div class="sayisal-cluster">
+                    ${sayisalSubjects.map(sub => renderSubjectColumn(sub)).join('')}
+                  </div>
+                ` : ''}
               </div>
             </div>
           </div>
@@ -2070,7 +1946,7 @@ window.MockExamModule = {
     const modal = document.getElementById('mock-key-modal');
     if (!modal) return;
 
-    const subjects = this.getOrderedLgsSubjects(exam.subjects || []);
+    const subjects = exam.subjects || [];
     const curSub = subjects[this._activeKeySubjectIdx] || subjects[0];
     const booklet = this._activeKeyBooklet || 'A';
     const keyMap = booklet === 'A' ? (curSub.answerKeyA || {}) : (curSub.answerKeyB || {});
